@@ -1,5 +1,10 @@
 # Geo-Enabled Points-of-Interest API
 
+<p align="center">
+  <img src="UI.png" alt="GeoAPI Explorer UI" width="900"/>
+</p>
+<p align="center"><b>Modern, interactive map UI for searching Points of Interest</b></p>
+
 A high-performance, production-ready Points-of-Interest API built with Django 5, GeoDjango, and PostgreSQL with PostGIS. Features spatial indexing, optimized radius queries, and comprehensive testing.
 
 ## 🚀 Quick Start (5 Commands)
