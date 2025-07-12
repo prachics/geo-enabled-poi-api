@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoAPI - Points of Interest Explorer</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .search-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .search-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 0.9rem;
+        }
+
+        .form-group input, .form-group select {
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .map-container {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            height: 600px;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .results-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f3f4;
+        }
+
+        .results-count {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .results-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .poi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .poi-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .poi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .poi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .poi-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .poi-category {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .poi-rating {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #ffc107;
+            font-size: 0.9rem;
+        }
+
+        .poi-description {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .poi-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: #777;
+        }
+
+        .poi-detail {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .search-form {
+                grid-template-columns: 1fr;
+            }
+            
+            .map-container {
+                height: 400px;
+            }
+            
+            .poi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-map-marker-alt"></i> GeoAPI Explorer</h1>
+            <p>Discover Points of Interest around the world</p>
+        </div>
+
+        <div class="search-panel">
+            <form id="searchForm" class="search-form">
+                <div class="form-group">
+                    <label for="latitude">Latitude</label>
+                    <input type="number" id="latitude" name="lat" step="0.000001" value="40.7580" required>
+                </div>
+                <div class="form-group">
+                    <label for="longitude">Longitude</label>
+                    <input type="number" id="longitude" name="lng" step="0.000001" value="-74.0060" required>
+                </div>
+                <div class="form-group">
+                    <label for="radius">Radius (km)</label>
+                    <input type="number" id="radius" name="radius_km" min="0.1" max="100" value="5" step="0.1" required>
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category" name="category">
+                        <option value="">All Categories</option>
+                        <option value="restaurant">Restaurant</option>
+                        <option value="hotel">Hotel</option>
+                        <option value="museum">Museum</option>
+                        <option value="park">Park</option>
+                        <option value="shopping">Shopping</option>
+                        <option value="transport">Transport</option>
+                        <option value="landmark">Landmark</option>
+                        <option value="entertainment">Entertainment</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Search POIs
+                    </button>
+                </div>
+                <div class="form-group">
+                    <button type="button" id="useMyLocation" class="btn btn-secondary">
+                        <i class="fas fa-location-arrow"></i> Use My Location
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <div class="results-panel" id="resultsPanel" style="display: none;">
+            <div class="results-header">
+                <div class="results-count" id="resultsCount">0 POIs found</div>
+                <div class="results-stats" id="resultsStats"></div>
+            </div>
+            <div class="poi-grid" id="poiGrid"></div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Searching for POIs...</p>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        let map;
+        let markers = [];
+        let currentLocation = null;
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([40.7580, -74.0060], 12);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Add click handler to set coordinates
+            map.on('click', function(e) {
+                document.getElementById('latitude').value = e.latlng.lat.toFixed(6);
+                document.getElementById('longitude').value = e.latlng.lng.toFixed(6);
+            });
+        }
+
+        // Clear existing markers
+        function clearMarkers() {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+        }
+
+        // Add POI markers to map
+        function addPOIMarkers(pois) {
+            clearMarkers();
+            
+            pois.forEach(poi => {
+                const lat = poi.location.coordinates[1];
+                const lng = poi.location.coordinates[0];
+                
+                const marker = L.marker([lat, lng])
+                    .bindPopup(`
+                        <div style="min-width: 200px;">
+                            <h4 style="margin: 0 0 8px 0; color: #333;">${poi.name}</h4>
+                            <p style="margin: 0 0 8px 0; color: #666;">${poi.category}</p>
+                            <p style="margin: 0; font-size: 0.9em;">${poi.address || 'No address'}</p>
+                        </div>
+                    `)
+                    .addTo(map);
+                
+                markers.push(marker);
+            });
+
+            // Fit map to show all markers
+            if (markers.length > 0) {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }
+
+        // Format category for display
+        function formatCategory(category) {
+            return category.charAt(0).toUpperCase() + category.slice(1);
+        }
+
+        // Create star rating HTML
+        function createStarRating(rating) {
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 !== 0;
+            let stars = '';
+            
+            for (let i = 0; i < fullStars; i++) {
+                stars += '<i class="fas fa-star"></i>';
+            }
+            
+            if (hasHalfStar) {
+                stars += '<i class="fas fa-star-half-alt"></i>';
+            }
+            
+            const emptyStars = 5 - Math.ceil(rating);
+            for (let i = 0; i < emptyStars; i++) {
+                stars += '<i class="far fa-star"></i>';
+            }
+            
+            return stars;
+        }
+
+        // Display POI results
+        function displayResults(pois) {
+            const resultsPanel = document.getElementById('resultsPanel');
+            const resultsCount = document.getElementById('resultsCount');
+            const resultsStats = document.getElementById('resultsStats');
+            const poiGrid = document.getElementById('poiGrid');
+
+            resultsCount.textContent = `${pois.length} POI${pois.length !== 1 ? 's' : ''} found`;
+
+            // Calculate stats
+            const categories = {};
+            let totalRating = 0;
+            pois.forEach(poi => {
+                categories[poi.category] = (categories[poi.category] || 0) + 1;
+                totalRating += poi.rating;
+            });
+            const avgRating = pois.length > 0 ? (totalRating / pois.length).toFixed(1) : 0;
+
+            resultsStats.innerHTML = `
+                <span><i class="fas fa-star"></i> Avg: ${avgRating}</span>
+                <span><i class="fas fa-tags"></i> ${Object.keys(categories).length} categories</span>
+            `;
+
+            // Create POI cards
+            poiGrid.innerHTML = pois.map(poi => `
+                <div class="poi-card" onclick="focusOnPOI(${poi.location.coordinates[1]}, ${poi.location.coordinates[0]})">
+                    <div class="poi-header">
+                        <div>
+                            <div class="poi-name">${poi.name}</div>
+                            <div class="poi-category">${formatCategory(poi.category)}</div>
+                        </div>
+                        <div class="poi-rating">
+                            ${createStarRating(poi.rating)}
+                            <span style="color: #666; margin-left: 4px;">${poi.rating}</span>
+                        </div>
+                    </div>
+                    <div class="poi-description">${poi.description || 'No description available'}</div>
+                    <div class="poi-details">
+                        ${poi.address ? `<div class="poi-detail"><i class="fas fa-map-marker-alt"></i> ${poi.address}</div>` : ''}
+                        ${poi.phone ? `<div class="poi-detail"><i class="fas fa-phone"></i> ${poi.phone}</div>` : ''}
+                        ${poi.website ? `<div class="poi-detail"><i class="fas fa-globe"></i> <a href="${poi.website}" target="_blank">${poi.website}</a></div>` : ''}
+                        <div class="poi-detail"><i class="fas fa-calendar"></i> Created: ${new Date(poi.created_at).toLocaleDateString()}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            resultsPanel.style.display = 'block';
+        }
+
+        // Focus map on specific POI
+        function focusOnPOI(lat, lng) {
+            map.setView([lat, lng], 16);
+        }
+
+        // Show loading state
+        function showLoading() {
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('resultsPanel').style.display = 'none';
+        }
+
+        // Hide loading state
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+
+        // Show error message
+        function showError(message) {
+            hideLoading();
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+            document.querySelector('.container').insertBefore(errorDiv, document.querySelector('.results-panel'));
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success';
+            successDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            document.querySelector('.container').insertBefore(successDiv, document.querySelector('.results-panel'));
+            setTimeout(() => successDiv.remove(), 3000);
+        }
+
+        // Search POIs
+        async function searchPOIs(formData) {
+            try {
+                showLoading();
+                
+                const params = new URLSearchParams(formData);
+                const response = await fetch(`/api/pois/pois/?${params.toString()}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    addPOIMarkers(data.results);
+                    displayResults(data.results);
+                    showSuccess(`Found ${data.results.length} POIs!`);
+                } else {
+                    addPOIMarkers([]);
+                    document.getElementById('resultsPanel').style.display = 'none';
+                    showSuccess('No POIs found in this area. Try expanding the search radius.');
+                }
+                
+            } catch (error) {
+                console.error('Error searching POIs:', error);
+                showError('Failed to search POIs. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Get user location
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        document.getElementById('latitude').value = lat.toFixed(6);
+                        document.getElementById('longitude').value = lng.toFixed(6);
+                        
+                        // Center map on user location
+                        map.setView([lat, lng], 14);
+                        
+                        // Add user location marker
+                        if (currentLocation) {
+                            map.removeLayer(currentLocation);
+                        }
+                        currentLocation = L.marker([lat, lng], {
+                            icon: L.divIcon({
+                                className: 'user-location',
+                                html: '<i class="fas fa-user" style="color: #667eea; font-size: 20px;"></i>',
+                                iconSize: [20, 20]
+                            })
+                        }).addTo(map);
+                        
+                        showSuccess('Location set to your current position!');
+                    },
+                    function(error) {
+                        showError('Unable to get your location. Please enter coordinates manually.');
+                    }
+                );
+            } else {
+                showError('Geolocation is not supported by this browser.');
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            
+            document.getElementById('searchForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                searchPOIs(formData);
+            });
+            
+            document.getElementById('useMyLocation').addEventListener('click', getUserLocation);
+        });
+    </script>
+</body>
+</html> 

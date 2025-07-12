@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgis/postgis:15-3.3
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_geoapi
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gdal-bin libgdal-dev libgeos-dev libproj-dev postgresql-client
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run linting
+      run: |
+        flake8 geoapi pois tests
+        black --check geoapi pois tests
+        isort --check-only geoapi pois tests
+    
+    - name: Run tests
+      env:
+        POSTGRES_DB: test_geoapi
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        DJANGO_SECRET_KEY: test-secret-key
+        DJANGO_DEBUG: True
+      run: |
+        python manage.py migrate
+        python manage.py test
+    
+    - name: Run performance tests
+      env:
+        POSTGRES_DB: test_geoapi
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        DJANGO_SECRET_KEY: test-secret-key
+        DJANGO_DEBUG: True
+      run: |
+        python manage.py test tests.test_api.PointOfInterestPerformanceTest 
