@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Reproduce the README benchmark. Requires wrk (brew install wrk / apt install wrk).
 #
-#   DJANGO_DEBUG=False docker compose up -d     # DEBUG=True logs every SQL query, which skews latency
+#   docker compose -f docker-compose.yml -f docker-compose.gunicorn.yml up -d --build   # Gunicorn, DEBUG off
 #   docker compose exec web python manage.py generate_random_pois --count 100000 --radius-km 50
 #   ./scripts/bench.sh
 #

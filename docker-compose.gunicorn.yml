@@ -1,0 +1,9 @@
+# Serve the API with Gunicorn instead of the development server (used for the README benchmark):
+#   docker compose -f docker-compose.yml -f docker-compose.gunicorn.yml up -d
+services:
+  web:
+    command: >
+      sh -c "python manage.py migrate &&
+             gunicorn geoapi.wsgi:application --bind 0.0.0.0:8000 --workers 4"
+    environment:
+      - DJANGO_DEBUG=False

@@ -31,25 +31,31 @@ Map UI: `http://localhost:8000/` · Interactive API docs: `http://localhost:8000
 
 ## Results
 
-Measured with `scripts/bench.sh` (wrk, 4 threads, 10 connections, 30 s per case) on an Apple M4 Pro (24 GB) in Docker
-Desktop, Django development server with `DJANGO_DEBUG=False`, against 100,000 POIs generated within 50 km of Times
-Square (about 10,000 of them within 5 km of the query center).
+Measured with `scripts/bench.sh` (wrk, 4 threads, 10 connections, 30 s per case).
+
+- **Machine:** Apple M4 Pro, 24 GB, Docker Desktop (12 CPUs, 8 GB for the VM)
+- **Server:** Gunicorn 23, 4 sync workers, `DJANGO_DEBUG=False` (`docker-compose.gunicorn.yml`)
+- **Data:** 100,000 POIs generated within 50 km of Times Square (about 10,000 of them within 5 km of the query center)
 
 | Query | Requests/sec | Median latency | p90 | p99 |
 |---|---:|---:|---:|---:|
-| 5 km radius, uncached | 60 | 138 ms | 176 ms | 283 ms |
-| 40 km radius, uncached | 14 | 671 ms | 715 ms | 852 ms |
-| 5 km radius, cached | 1,485 | 4.6 ms | 8.1 ms | 160 ms |
-| 40 km radius, cached | 1,417 | 4.7 ms | 9.4 ms | 1.26 s |
+| 5 km radius, uncached | 35 | 222 ms | 229 ms | 272 ms |
+| 40 km radius, uncached | 6.9 | 1.12 s | 1.15 s | 1.38 s |
+| 5 km radius, cached | 2,547 | 1.7 ms | 3.1 ms | 24 ms |
+| 40 km radius, cached | 2,642 | 1.7 ms | 3.2 ms | 727 ms |
 
 *Uncached*: every request uses a different random center within ~2 km of Times Square, so it misses the 5-minute
 response cache and runs the spatial query. *Cached*: the same URL repeatedly; after the first request it is served from
-Django's response cache.
+Django's response cache (per worker process). The cached runs had 8 connect errors each, out of ~77,000 requests.
+
+Uncached throughput is bound by how many queries run at once: 4 sync workers run at most 4. With
+`--workers 4 --threads 4` the same 5 km uncached case does 71 requests/sec at a 127 ms median, and the threaded
+development server does 64 requests/sec at 132 ms.
 
 Reproduce:
 
 ```bash
-DJANGO_DEBUG=False docker compose up -d   # DEBUG=True logs every SQL query, which skews latency
+docker compose -f docker-compose.yml -f docker-compose.gunicorn.yml up -d --build
 docker compose exec web python manage.py generate_random_pois --count 100000 --radius-km 50
 ./scripts/bench.sh                         # BASE=http://localhost:8000 by default
 ```
@@ -104,7 +110,7 @@ checks.
 |---|---|
 | API | Django 5, Django REST Framework |
 | Spatial | GeoDjango, PostgreSQL 15 + PostGIS 3 |
-| Runtime | Python 3.12, Docker Compose |
+| Runtime | Python 3.12, Gunicorn, Docker Compose |
 | CI | GitHub Actions |
 | Load testing | wrk |
 
