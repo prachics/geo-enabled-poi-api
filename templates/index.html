@@ -388,6 +388,7 @@
         let map;
         let markers = [];
         let currentLocation = null;
+        let searchArea = null;
 
         // Initialize map
         function initMap() {
@@ -405,6 +406,19 @@
         }
 
         // Clear existing markers
+        // Outline the searched radius so the results can be checked against it.
+        function drawSearchArea(query) {
+            if (searchArea) {
+                map.removeLayer(searchArea);
+            }
+            searchArea = L.circle([query.center.lat, query.center.lng], {
+                radius: query.radius_km * 1000,
+                color: '#667eea',
+                weight: 2,
+                fillOpacity: 0.06,
+            }).addTo(map);
+        }
+
         function clearMarkers() {
             markers.forEach(marker => map.removeLayer(marker));
             markers = [];
@@ -415,8 +429,8 @@
             clearMarkers();
             
             pois.forEach(poi => {
-                const lat = poi.location.coordinates[1];
-                const lng = poi.location.coordinates[0];
+                // The API returns coordinates as [longitude, latitude].
+                const [lng, lat] = poi.coordinates;
                 
                 const marker = L.marker([lat, lng])
                     .bindPopup(`
@@ -479,7 +493,8 @@
             let totalRating = 0;
             pois.forEach(poi => {
                 categories[poi.category] = (categories[poi.category] || 0) + 1;
-                totalRating += poi.rating;
+                // DRF serializes the decimal rating as a string.
+                totalRating += parseFloat(poi.rating);
             });
             const avgRating = pois.length > 0 ? (totalRating / pois.length).toFixed(1) : 0;
 
@@ -490,19 +505,20 @@
 
             // Create POI cards
             poiGrid.innerHTML = pois.map(poi => `
-                <div class="poi-card" onclick="focusOnPOI(${poi.location.coordinates[1]}, ${poi.location.coordinates[0]})">
+                <div class="poi-card" onclick="focusOnPOI(${poi.coordinates[1]}, ${poi.coordinates[0]})">
                     <div class="poi-header">
                         <div>
                             <div class="poi-name">${poi.name}</div>
                             <div class="poi-category">${formatCategory(poi.category)}</div>
                         </div>
                         <div class="poi-rating">
-                            ${createStarRating(poi.rating)}
+                            ${createStarRating(parseFloat(poi.rating))}
                             <span style="color: #666; margin-left: 4px;">${poi.rating}</span>
                         </div>
                     </div>
                     <div class="poi-description">${poi.description || 'No description available'}</div>
                     <div class="poi-details">
+                        <div class="poi-detail"><i class="fas fa-route"></i> ${poi.distance_km} km away</div>
                         ${poi.address ? `<div class="poi-detail"><i class="fas fa-map-marker-alt"></i> ${poi.address}</div>` : ''}
                         ${poi.phone ? `<div class="poi-detail"><i class="fas fa-phone"></i> ${poi.phone}</div>` : ''}
                         ${poi.website ? `<div class="poi-detail"><i class="fas fa-globe"></i> <a href="${poi.website}" target="_blank">${poi.website}</a></div>` : ''}
@@ -562,9 +578,11 @@
                 }
                 
                 const data = await response.json();
+                drawSearchArea(data.query);
                 
                 if (data.results && data.results.length > 0) {
                     addPOIMarkers(data.results);
+                    map.fitBounds(searchArea.getBounds().pad(0.05));
                     displayResults(data.results);
                     showSuccess(`Found ${data.results.length} POIs!`);
                 } else {

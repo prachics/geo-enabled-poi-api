@@ -3,7 +3,7 @@
 A REST API and map UI for finding points of interest within a radius, built with Django 5, Django REST Framework, GeoDjango, and PostgreSQL 15 + PostGIS 3.
 
 <p align="center">
-  <img src="UI.png" alt="Map UI for radius search" width="900"/>
+  <img src="UI.png" alt="Map UI: a 1 km restaurant search around UCF, with the searched radius outlined and every result inside it" width="900"/>
 </p>
 
 Radius search runs as an index-backed `ST_DWithin` query on a PostGIS **geography** column, so distances are in meters and the GIST spatial index is used. Results include the distance from the query point and can be filtered by category and minimum rating.
@@ -24,6 +24,12 @@ curl "http://localhost:8000/api/pois/pois/?lat=40.7580&lng=-74.0060&radius_km=5"
 ```
 
 Map UI: `http://localhost:8000/` · Interactive API docs: `http://localhost:8000/api/docs/`
+
+The map outlines the searched radius; each result card shows its distance from the center.
+
+<p align="center">
+  <img src="docs/ui-results.png" alt="Result cards with distance, rating and address" width="900"/>
+</p>
 
 `env.sample` lists the settings to change for a production deployment (secret key, `DEBUG`, allowed hosts).
 
